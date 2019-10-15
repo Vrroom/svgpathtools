@@ -9,6 +9,8 @@ from cmath import exp, sqrt as csqrt, phase
 from collections import MutableSequence
 from warnings import warn
 from operator import itemgetter
+from scipy.spatial import ConvexHull
+from shapely import Polygon
 import numpy as np
 try:
     from scipy.integrate import quad
@@ -2062,6 +2064,7 @@ class Path(MutableSequence):
         self._segments = list(segments)
         self._length = None
         self._lengths = None
+        self.convexHull()
         if 'closed' in kw:
             self.closed = kw['closed']  # DEPRECATED
         if self._segments:
@@ -2488,6 +2491,44 @@ class Path(MutableSequence):
             else:
                 bezier_path_approximation.append(seg)
         return area_without_arcs(Path(*bezier_path_approximation))
+
+    def approx_adj (self, other) :
+
+        assert isinstance(other, Path)
+        
+        if not self.hull :
+            return False
+
+        intersects = self.hull.intersects(other.hull)
+        return intersects
+
+    def convexHull (self) : 
+        self.hull = None
+
+        pts = [] 
+        for seg in self :
+            if isinstance(seg, Line) :
+                pts.append(seg.start)
+                pts.append(seg.end)
+            elif isinstance(seg, QuadraticBezier) : 
+                pts.append(seg.start)
+                pts.append(seg.control)
+                pts.append(seg.end)
+            elif isinstance(seg, CubicBezier) : 
+                pts.append(seg.start)
+                pts.append(seg.control1)
+                pts.append(seg.control2)
+                pts.append(seg.end)
+            elif isinstance(seg, Arc) : 
+                pts.append(seg.start)
+                pts.append(seg.end)
+
+        pts = np.array([[pt.real, pt.imag] for pt in pts])
+
+        if len(pts) >= 3 : 
+            self.hull = Polygon(ConvexHull(pts).tolist())
+            
+
 
     def intersect(self, other_curve, justonemode=False, tol=1e-12):
         """returns list of pairs of pairs ((T1, seg1, t1), (T2, seg2, t2))

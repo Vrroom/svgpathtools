@@ -50,7 +50,7 @@ def ellipse2pathd(ellipse):
 def polyline2pathd(polyline_d, is_polygon=False):
     """converts the string from a polyline points-attribute to a string for a
     Path object d-attribute"""
-    points = COORD_PAIR_TMPLT.findall(polyline_d)
+    points = COORD_PAIR_TMPLT.findall(polyline_d.attrib['points'])
     closed = (float(points[0][0]) == float(points[-1][0]) and
               float(points[0][1]) == float(points[-1][1]))
 
@@ -91,7 +91,13 @@ def rect2pathd(rect):
     return d
 
 def line2pathd(l):
-    return 'M' + l['x1'] + ' ' + l['y1'] + 'L' + l['x2'] + ' ' + l['y2']
+
+    x1 = l.attrib['x1']
+    x2 = l.attrib['x2']
+    y1 = l.attrib['y1']
+    y2 = l.attrib['y2']
+
+    return 'M' + x1 + ' ' + y1 + 'L' + x2 + ' ' + y2 
 
 def svg2paths(svg_file_location,
               return_svg_attributes=False,

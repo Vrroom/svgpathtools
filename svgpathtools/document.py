@@ -140,7 +140,9 @@ def flatten_all_paths(group, group_filter=lambda x: True,
                 path_tf = top.transform.dot(
                     parse_transform(path_elem.get('transform')))
                 path = transform(parse_path(converter(path_elem)), path_tf)
-                paths.append(FlattenedPath(path, path_elem, path_tf))
+
+                if len(path) > 0 : 
+                    paths.append(FlattenedPath(path, path_elem, path_tf))
 
         stack.extend(get_relevant_children(top.group, top.transform))
 
