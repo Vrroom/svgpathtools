@@ -10,7 +10,7 @@ from collections import MutableSequence
 from warnings import warn
 from operator import itemgetter
 from scipy.spatial import ConvexHull
-from shapely import Polygon
+from shapely.geometry import Polygon
 import numpy as np
 try:
     from scipy.integrate import quad
@@ -276,9 +276,28 @@ def transform(curve, tf):
     elif isinstance(curve, Arc):
         new_start = to_complex(tf.dot(to_point(curve.start)))
         new_end = to_complex(tf.dot(to_point(curve.end)))
-        new_radius = to_complex(tf.dot(to_vector(curve.radius)))
-        return Arc(new_start, radius=new_radius, rotation=curve.rotation,
-                   large_arc=curve.large_arc, sweep=curve.sweep, end=new_end)
+        
+        # Based on https://math.stackexchange.com/questions/2349726/compute-the-major-and-minor-axis-of-an-ellipse-after-linearly-transforming-it
+        rx2 = curve.radius.real ** 2
+        ry2 = curve.radius.imag ** 2
+
+        Q = np.array([[1/rx2, 0], [0, 1/ry2]])
+        invT = np.linalg.inv(tf[:2,:2])
+        D = invT.T @ Q @ invT
+
+        eigvals = np.linalg.eigvals(D)
+
+        rx = 1 / np.sqrt(eigvals[0])
+        ry = 1 / np.sqrt(eigvals[1])
+
+        new_radius = complex(rx, ry)
+
+        if new_radius.real == 0 or new_radius.imag == 0 :
+            return Line(new_start, new_end)
+        else : 
+            return Arc(new_start, radius=new_radius, rotation=curve.rotation,
+                       large_arc=curve.large_arc, sweep=curve.sweep, end=new_end)
+
     else:
         raise TypeError("Input `curve` should be a Path, Line, "
                         "QuadraticBezier, CubicBezier, or Arc object.")
@@ -451,7 +470,7 @@ def inv_arclength(curve, s, s_tol=ILENGTH_S_TOL, maxits=ILENGTH_MAXITS,
     than you need, make sure you have scipy installed."""
 
     curve_length = curve.length(error=error, min_depth=min_depth)
-    assert curve_length > 0
+    # assert curve_length > 0
     if not 0 <= s <= curve_length:
         raise ValueError("s is not in interval [0, curve.length()].")
 
@@ -2139,7 +2158,9 @@ class Path(MutableSequence):
         lengths = [each.length(error=error, min_depth=min_depth) for each in
                    self._segments]
         self._length = sum(lengths)
-        self._lengths = [each/self._length for each in lengths]
+        
+        if self._length != 0 : 
+            self._lengths = [each/self._length for each in lengths]
 
     def point(self, pos):
 
@@ -2150,6 +2171,10 @@ class Path(MutableSequence):
             return self._segments[-1].point(pos)
 
         self._calc_lengths()
+
+        if self._length == 0 : 
+            return self._segments[0].point(pos)
+
         # Find which segment the point we search for is located on:
         segment_start = 0
         for index, segment in enumerate(self._segments):
@@ -2499,8 +2524,11 @@ class Path(MutableSequence):
         if not self.hull :
             return False
 
-        intersects = self.hull.intersects(other.hull)
-        return intersects
+        try : 
+            intersects = self.hull.intersects(other.hull)
+            return intersects
+        except Exception :
+            return False
 
     def convexHull (self) : 
         self.hull = None
@@ -2526,7 +2554,12 @@ class Path(MutableSequence):
         pts = np.array([[pt.real, pt.imag] for pt in pts])
 
         if len(pts) >= 3 : 
-            self.hull = Polygon(ConvexHull(pts).tolist())
+            try : 
+                hull = ConvexHull(pts)
+                boundary = pts[hull.vertices].tolist()
+                self.hull = Polygon(boundary)
+            except Exception :
+                pass
             
 
 

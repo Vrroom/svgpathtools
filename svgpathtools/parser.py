@@ -199,8 +199,11 @@ def parse_path(pathdef, current_pos=0j, tree_element=None):
             if not absolute:
                 end += current_pos
 
-            segments.append(Arc(current_pos, radius, rotation, arc, sweep, end))
-            current_pos = end
+            try : 
+                segments.append(Arc(current_pos, radius, rotation, arc, sweep, end))
+                current_pos = end
+            except AssertionError :
+                pass
 
     return segments
 
