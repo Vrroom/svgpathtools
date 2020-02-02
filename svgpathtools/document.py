@@ -125,7 +125,10 @@ def flatten_all_paths(group, group_filter=lambda x: True,
     stack = [new_stack_element(group, np.identity(3))]
 
     FlattenedPath = collections.namedtuple('FlattenedPath',
-                                           ['path', 'element', 'transform'])
+                                           ['path', 'element', 'transform', 'zIndex'])
+
+    allNodes = list(group.iter())
+
     paths = []
 
     while stack:
@@ -142,7 +145,7 @@ def flatten_all_paths(group, group_filter=lambda x: True,
                 path = transform(parse_path(converter(path_elem)), path_tf)
 
                 if len(path) > 0 : 
-                    paths.append(FlattenedPath(path, path_elem, path_tf))
+                    paths.append(FlattenedPath(path, path_elem, path_tf, allNodes.index(path_elem)))
 
         stack.extend(get_relevant_children(top.group, top.transform))
 
@@ -279,7 +282,8 @@ class Document:
 
         attribs['d'] = path_svg
 
-        return SubElement(group, 'path', attribs)
+        return SubElement(group, '{{{0}}}path'.format(
+            SVG_NAMESPACE['svg']), attribs)
 
     def contains_group(self, group):
         return any(group is owned for owned in self.tree.iter())
@@ -322,6 +326,12 @@ class Document:
                 # Now nested_names will be empty, so the topmost
                 # while-loop will end
         return group
+
+    def get_viewbox(self) :
+        vb = self.tree.getroot().attrib['viewBox']
+        vb = vb.split()
+        vb = list(map(float, vb))
+        return vb
 
     def add_group(self, group_attribs=None, parent=None):
         """Add an empty group element to the SVG."""

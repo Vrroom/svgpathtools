@@ -10,7 +10,7 @@ from collections import MutableSequence
 from warnings import warn
 from operator import itemgetter
 from scipy.spatial import ConvexHull
-from shapely.geometry import Polygon
+from shapely.geometry import LineString 
 import numpy as np
 try:
     from scipy.integrate import quad
@@ -471,12 +471,12 @@ def inv_arclength(curve, s, s_tol=ILENGTH_S_TOL, maxits=ILENGTH_MAXITS,
 
     curve_length = curve.length(error=error, min_depth=min_depth)
     # assert curve_length > 0
-    if not 0 <= s <= curve_length:
+    if not 0 <= s <= curve_length + s_tol:
         raise ValueError("s is not in interval [0, curve.length()].")
 
     if s == 0:
         return 0
-    if s == curve_length:
+    if curve_length <= s <= curve_length + s_tol:
         return 1
 
     if isinstance(curve, Path):
@@ -2165,9 +2165,9 @@ class Path(MutableSequence):
     def point(self, pos):
 
         # Shortcuts
-        if pos == 0.0:
+        if 0.0 <= pos <= 0.0 + LENGTH_ERROR:
             return self._segments[0].point(pos)
-        if pos == 1.0:
+        if 1.0 - LENGTH_ERROR <= pos <= 1.0 + LENGTH_ERROR :
             return self._segments[-1].point(pos)
 
         self._calc_lengths()
@@ -2233,8 +2233,7 @@ class Path(MutableSequence):
     def isclosed(self):
         """This function determines if a connected path is closed."""
         assert len(self) != 0
-        assert self.iscontinuous()
-        return self.start == self.end
+        return self.start == self.end and self.iscontinuous()
 
     def isclosedac(self):
         assert len(self) != 0
@@ -2557,9 +2556,13 @@ class Path(MutableSequence):
             try : 
                 hull = ConvexHull(pts)
                 boundary = pts[hull.vertices].tolist()
-                self.hull = Polygon(boundary)
+                boundary.append(boundary[0])
+                self.hull = LineString(boundary)
             except Exception :
                 pass
+        else :
+            self.hull = LineString(pts.tolist())
+
             
 
 

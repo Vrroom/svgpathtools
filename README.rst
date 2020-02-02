@@ -1,3 +1,11 @@
+Note From Sumit
+===============
+
+I have made some tweaks to this library for it to 
+be useful for the project I'm working on. 
+
+If you are using vectorrvnn, you have to install this
+as well.
 
 svgpathtools
 ============
