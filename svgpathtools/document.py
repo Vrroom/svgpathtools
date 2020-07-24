@@ -247,7 +247,7 @@ class Document:
 
         # If given a list of strings (one or more), assume it represents
         # a sequence of nested group names
-        elif all(isinstance(elem, str) for elem in group):
+        elif all(isinstance(elem, str) for elem in group) and len(group) > 0 :
             group = self.get_or_add_group(group)
 
         elif not isinstance(group, Element):
