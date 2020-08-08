@@ -139,7 +139,7 @@ def flatten_all_paths(group, group_filter=lambda x: True,
         # accepts it.
         for key, converter in path_conversions.items():
             for path_elem in filter(path_filter, top.group.iterfind(
-                    'svg:'+key, SVG_NAMESPACE)):
+                    f'svg:{key}', SVG_NAMESPACE)):
                 path_tf = top.transform.dot(
                     parse_transform(path_elem.get('transform')))
                 path = transform(parse_path(converter(path_elem)), path_tf)
@@ -333,6 +333,9 @@ class Document:
         vb = list(map(float, vb))
         return vb
 
+    def set_viewbox(self, vb) :
+        self.tree.getroot().attrib['viewBox'] = vb
+
     def add_group(self, group_attribs=None, parent=None):
         """Add an empty group element to the SVG."""
         if parent is None:
@@ -350,7 +353,7 @@ class Document:
             SVG_NAMESPACE['svg']), group_attribs)
 
     def save(self, filename):
-        with open(filename, 'w') as output_svg:
+        with open(filename, 'wb') as output_svg:
             output_svg.write(etree.tostring(self.tree.getroot()))
 
     def display(self, filename=None):
