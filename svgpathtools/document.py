@@ -148,7 +148,7 @@ def flatten_all_paths(group, group_filter=lambda x: True,
                     paths.append(FlattenedPath(path, path_elem, path_tf, allNodes.index(path_elem)))
 
         stack.extend(get_relevant_children(top.group, top.transform))
-
+    paths.sort(key=lambda x : x.zIndex)
     return paths
 
 
@@ -213,6 +213,10 @@ class Document:
         else:
             self.tree = etree.ElementTree(Element('svg'))
 
+        self.root = self.tree.getroot()
+
+    def fromString (self, string) : 
+        self.tree = etree.ElementTree(etree.fromstring(string))
         self.root = self.tree.getroot()
 
     def flatten_all_paths(self, group_filter=lambda x: True,
@@ -332,6 +336,17 @@ class Document:
         vb = vb.split()
         vb = list(map(float, vb))
         return vb
+
+    def normalize_viewbox(self) : 
+        """
+        Essentially make the viewbox a square such that the 
+        current viewbox is right in the center.
+        """
+        a, b, c, d = self.get_viewbox()
+        if c < d : 
+            self.set_viewbox(f'{a-(d-c)/2} {b} {d} {d}')
+        else : 
+            self.set_viewbox(f'{a} {b-(c-d)/2} {c} {c}')
 
     def set_viewbox(self, vb) :
         self.tree.getroot().attrib['viewBox'] = vb
