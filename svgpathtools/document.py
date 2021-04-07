@@ -49,6 +49,15 @@ from .svg_to_paths import (path2pathd, ellipse2pathd, line2pathd,
                            polyline2pathd, polygon2pathd, rect2pathd)
 from .misctools import open_in_browser
 from .path import *
+import string
+from copy import deepcopy
+
+class Del:
+    def __init__(self, keep=string.digits + '.-e'):
+        self.comp = dict((ord(c),c) for c in keep)
+    def __getitem__(self, k):
+        return self.comp.get(k)
+DD = Del()
 
 # To maintain forward/backward compatibility
 try:
@@ -143,7 +152,6 @@ def flatten_all_paths(group, group_filter=lambda x: True,
                 path_tf = top.transform.dot(
                     parse_transform(path_elem.get('transform')))
                 path = transform(parse_path(converter(path_elem)), path_tf)
-
                 if len(path) > 0 : 
                     paths.append(FlattenedPath(path, path_elem, path_tf, allNodes.index(path_elem)))
 
@@ -214,6 +222,7 @@ class Document:
             self.tree = etree.ElementTree(Element('svg'))
 
         self.root = self.tree.getroot()
+        self.parent_map = {c: p for p in tree.iter() for c in p}
 
     def fromString (self, string) : 
         self.tree = etree.ElementTree(etree.fromstring(string))
@@ -334,6 +343,7 @@ class Document:
     def get_viewbox(self) :
         vb = self.tree.getroot().attrib['viewBox']
         vb = vb.split()
+        vb = [_.translate(DD) for _ in vb]
         vb = list(map(float, vb))
         return vb
 
@@ -342,7 +352,14 @@ class Document:
         Essentially make the viewbox a square such that the 
         current viewbox is right in the center.
         """
-        a, b, c, d = self.get_viewbox()
+        try : 
+            a, b, c, d = self.get_viewbox()
+        except Exception : 
+            a, b = 0, 0
+            height = deepcopy(self.tree.getroot().attrib['height']).translate(DD)
+            width = deepcopy(self.tree.getroot().attrib['width']).translate(DD)
+            c = float(height)
+            d = float(width)
         if c < d : 
             self.set_viewbox(f'{a-(d-c)/2} {b} {d} {d}')
         else : 
