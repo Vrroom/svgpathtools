@@ -11,10 +11,9 @@ except ImportError:
     from collections import MutableSequence  # noqa
 from warnings import warn
 from operator import itemgetter
-from scipy.spatial import ConvexHull
-from shapely.geometry import LineString 
 import numpy as np
 from itertools import tee
+from functools import reduce
 
 # these imports were originally from math and cmath, now are from numpy
 # in order to encourage code that generalizes to vector inputs
@@ -290,7 +289,6 @@ def scale(curve, sx, sy=None, origin=0j):
         raise TypeError("Input `curve` should be a Path, Line, "
                         "QuadraticBezier, CubicBezier, or Arc object.")
 
-
 def transform(curve, tf):
     """Transforms the curve by the homogeneous transformation matrix tf"""
     def to_point(p):
@@ -319,20 +317,24 @@ def transform(curve, tf):
 
         Q = np.array([[1/rx2, 0], [0, 1/ry2]])
         invT = np.linalg.inv(tf[:2,:2])
-        D = invT.T @ Q @ invT
+        D = reduce(np.matmul, [invT.T, Q, invT])
 
-        eigvals = np.linalg.eigvals(D)
+        eigvals, eigvecs = np.linalg.eig(D)
 
         rx = 1 / np.sqrt(eigvals[0])
         ry = 1 / np.sqrt(eigvals[1])
 
         new_radius = complex(rx, ry)
 
+        xeigvec = eigvecs[:, 0]
+        rot = np.degrees(np.arccos(xeigvec[0]))
+
         if new_radius.real == 0 or new_radius.imag == 0 :
             return Line(new_start, new_end)
         else : 
-            return Arc(new_start, radius=new_radius, rotation=curve.rotation,
-                       large_arc=curve.large_arc, sweep=curve.sweep, end=new_end)
+            return Arc(new_start, radius=new_radius, rotation=curve.rotation + rot,
+                       large_arc=curve.large_arc, sweep=curve.sweep, end=new_end,
+                       autoscale_radius=False)
 
     else:
         raise TypeError("Input `curve` should be a Path, Line, "
@@ -506,13 +508,13 @@ def inv_arclength(curve, s, s_tol=ILENGTH_S_TOL, maxits=ILENGTH_MAXITS,
     than you need, make sure you have scipy installed."""
 
     curve_length = curve.length(error=error, min_depth=min_depth)
-    # assert curve_length > 0
-    if not 0 <= s <= curve_length + s_tol:
+    assert curve_length > 0
+    if not 0 <= s <= curve_length:
         raise ValueError("s is not in interval [0, curve.length()].")
 
     if s == 0:
         return 0
-    if curve_length <= s <= curve_length + s_tol:
+    if s == curve_length:
         return 1
 
     if isinstance(curve, Path):
@@ -2373,7 +2375,6 @@ class Path(MutableSequence):
     def __init__(self, *segments, **kw):
         self._length = None
         self._lengths = None
-        self.convexHull()
         if 'closed' in kw:
             self.closed = kw['closed']  # DEPRECATED
         if len(segments) >= 1:
@@ -2476,16 +2477,12 @@ class Path(MutableSequence):
         # Shortcuts
         if len(self._segments) == 0:
             return None
-        if 0.0 <= pos <= 0.0 + LENGTH_ERROR:
+        if pos == 0.0:
             return self._segments[0].point(pos)
-        if 1.0 - LENGTH_ERROR <= pos <= 1.0 + LENGTH_ERROR :
+        if pos == 1.0:
             return self._segments[-1].point(pos)
 
         self._calc_lengths()
-
-        if self._length == 0 : 
-            return self._segments[0].point(pos)
-
         # Find which segment the point we search for is located on:
         segment_start = 0
         for index, segment in enumerate(self._segments):
@@ -2544,7 +2541,8 @@ class Path(MutableSequence):
     def isclosed(self):
         """This function determines if a connected path is closed."""
         assert len(self) != 0
-        return self.start == self.end and self.iscontinuous()
+        assert self.iscontinuous()
+        return self.start == self.end
 
     def isclosedac(self):
         assert len(self) != 0
@@ -2868,56 +2866,6 @@ class Path(MutableSequence):
             else:
                 bezier_path_approximation.append(seg)
         return area_without_arcs(Path(*bezier_path_approximation))
-
-    def approx_adj (self, other) :
-
-        assert isinstance(other, Path)
-        
-        if not self.hull :
-            return False
-
-        try : 
-            intersects = self.hull.intersects(other.hull)
-            return intersects
-        except Exception :
-            return False
-
-    def convexHull (self) : 
-        self.hull = None
-
-        pts = [] 
-        for seg in self :
-            if isinstance(seg, Line) :
-                pts.append(seg.start)
-                pts.append(seg.end)
-            elif isinstance(seg, QuadraticBezier) : 
-                pts.append(seg.start)
-                pts.append(seg.control)
-                pts.append(seg.end)
-            elif isinstance(seg, CubicBezier) : 
-                pts.append(seg.start)
-                pts.append(seg.control1)
-                pts.append(seg.control2)
-                pts.append(seg.end)
-            elif isinstance(seg, Arc) : 
-                pts.append(seg.start)
-                pts.append(seg.end)
-
-        pts = np.array([[pt.real, pt.imag] for pt in pts])
-
-        if len(pts) >= 3 : 
-            try : 
-                hull = ConvexHull(pts)
-                boundary = pts[hull.vertices].tolist()
-                boundary.append(boundary[0])
-                self.hull = LineString(boundary)
-            except Exception :
-                pass
-        else :
-            self.hull = LineString(pts.tolist())
-
-            
-
 
     def intersect(self, other_curve, justonemode=False, tol=1e-12):
         """returns list of pairs of pairs ((T1, seg1, t1), (T2, seg2, t2))
