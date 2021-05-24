@@ -222,7 +222,7 @@ class Document:
             self.tree = etree.ElementTree(Element('svg'))
 
         self.root = self.tree.getroot()
-        self.parent_map = {c: p for p in tree.iter() for c in p}
+        self.parent_map = {c: p for p in self.root.iter() for c in p}
 
     def fromString (self, string) : 
         self.tree = etree.ElementTree(etree.fromstring(string))
