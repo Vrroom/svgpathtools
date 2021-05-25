@@ -419,11 +419,16 @@ class Document:
         return group
 
     def get_viewbox(self) :
-        vb = self.tree.getroot().attrib['viewBox']
-        vb = vb.split()
-        vb = [_.translate(DD) for _ in vb]
-        vb = list(map(float, vb))
-        return vb
+        try : 
+            vb = self.tree.getroot().attrib['viewBox']
+            vb = vb.split()
+            vb = [_.translate(DD) for _ in vb]
+            vb = list(map(float, vb))
+            return vb
+        except Exception : 
+            height = deepcopy(self.tree.getroot().attrib['height']).translate(DD)
+            width = deepcopy(self.tree.getroot().attrib['width']).translate(DD)
+            return [0, 0, height, width]
 
     def normalize_viewbox(self) : 
         """

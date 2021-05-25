@@ -318,6 +318,8 @@ def transform(curve, tf):
         Q = np.array([[1/rx2, 0], [0, 1/ry2]])
         invT = np.linalg.inv(tf[:2,:2])
         D = reduce(np.matmul, [invT.T, Q, invT])
+        # Symmetrize in case of floating point errors.
+        D = (D + D.T) / 2
 
         eigvals, eigvecs = np.linalg.eig(D)
 
@@ -1479,7 +1481,7 @@ class Arc(object):
         # Note: an ellipse going through start and end with radius and phi
         # exists if and only if radius_check is true
         radius_check = (x1p_sqd/rx_sqd) + (y1p_sqd/ry_sqd)
-        if radius_check > 1:
+        if radius_check > 1 + 1e-5:
             if self.autoscale_radius:
                 rx *= sqrt(radius_check)
                 ry *= sqrt(radius_check)
