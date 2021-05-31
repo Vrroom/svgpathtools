@@ -450,6 +450,8 @@ class Document:
 
     def set_viewbox(self, vb) :
         self.tree.getroot().attrib['viewBox'] = vb
+        self.tree.getroot().attrib['height'] = vb.split()[2]
+        self.tree.getroot().attrib['width'] = vb.split()[3]
 
     def add_group(self, group_attribs=None, parent=None):
         """Add an empty group element to the SVG."""
