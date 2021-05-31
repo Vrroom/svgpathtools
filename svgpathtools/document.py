@@ -428,7 +428,7 @@ class Document:
         except Exception : 
             height = deepcopy(self.tree.getroot().attrib['height']).translate(DD)
             width = deepcopy(self.tree.getroot().attrib['width']).translate(DD)
-            return [0, 0, float(height), float(width)]
+            return [0, 0, float(width), float(height)]
 
     def normalize_viewbox(self) : 
         """
