@@ -2544,7 +2544,7 @@ class Path(MutableSequence):
         """This function determines if a connected path is closed."""
         assert len(self) != 0
         assert self.iscontinuous()
-        return self.start == self.end
+        return abs(self.start - self.end) < 1e-10
 
     def isclosedac(self):
         assert len(self) != 0
